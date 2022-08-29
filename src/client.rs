@@ -1,6 +1,8 @@
+use crate::gateway::DiscordWsClient;
+
 pub struct Client<'a> {
     pub token: &'a str,
-    pub intents: &'a u16
+    intents: &'a u16
 }
 
 impl<'a> Client<'a> {
@@ -18,8 +20,7 @@ impl<'a> Client<'a> {
         }
     }
 
-    pub async fn start() -> Result<(), crate::Error> {
-        // TODO: Implementation.
-        Ok(())
+    pub async fn start(&self) -> crate::Result<()> {
+        DiscordWsClient { token: self.token, intents: self.intents }.open_connection().await
     }
 }

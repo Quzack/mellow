@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 url = "2.2.2"
 futures = "0.3.23"
+serde_json = "1.0.85"
 
 [dependencies.tokio-tungstenite]
 version = "0.17"
@@ -14,3 +15,7 @@ features = ["native-tls"]
 [dependencies.tokio]
 version = "1.20.1"
 features = ["macros"]
+
+[dependencies.serde]
+version = "1.0.130"
+features = ["derive"]
