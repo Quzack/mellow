@@ -2,11 +2,15 @@ use std::fmt::{Display, Formatter, Result};
 
 #[derive(Debug)]
 pub enum GatewayError {
-    // TODO: Implementation.
+    InvalidOpCode(u8)
 }
 
 impl Display for GatewayError {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        Ok(())
+        use GatewayError::*;
+
+        match self {
+            InvalidOpCode(c) => Display::fmt(&format!("Received invalid OP code: {}", c), f)
+        }
     }
 }
