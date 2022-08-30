@@ -14,7 +14,7 @@ features = ["native-tls"]
 
 [dependencies.tokio]
 version = "1.20.1"
-features = ["macros"]
+features = ["macros", "rt-multi-thread"]
 
 [dependencies.serde]
 version = "1.0.130"

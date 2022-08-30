@@ -1,7 +1,7 @@
 use std::fmt::{Result, Display, Formatter};
 
 use serde_json::Error as JsonError;
-use tokio_tungstenite::tungstenite::Error as TungteniteError;
+use tokio_tungstenite::tungstenite::Error as TungsteniteError;
 
 use crate::gateway::GatewayError;
 
@@ -9,7 +9,7 @@ use crate::gateway::GatewayError;
 pub enum Error {
     Json(JsonError),
     Gateway(GatewayError),
-    Tungtenite(TungteniteError)
+    Tungstenite(TungsteniteError)
 }
 
 impl From<JsonError> for Error {
@@ -18,9 +18,9 @@ impl From<JsonError> for Error {
     }
 }
 
-impl From<TungteniteError> for Error {
-    fn from(e: TungteniteError) -> Self {
-        Error::Tungtenite(e)
+impl From<TungsteniteError> for Error {
+    fn from(e: TungsteniteError) -> Self {
+        Error::Tungstenite(e)
     }
 }
 
@@ -31,7 +31,7 @@ impl Display for Error {
         match self {
             Json(e) => Display::fmt(&e, f),
             Gateway(e) => Display::fmt(&e, f),
-            Tungtenite(e) => Display::fmt(&e, f)
+            Tungstenite(e) => Display::fmt(&e, f)
         }
     }
 }
