@@ -14,10 +14,7 @@ impl<'a> Client<'a> {
     }
 
     pub fn from_token(token: &'a str) -> Self {
-        Self {
-            token, 
-            intents: &0
-        }
+        Self::new(token, &0)
     }
 
     pub async fn start(&self) -> crate::Result<()> {

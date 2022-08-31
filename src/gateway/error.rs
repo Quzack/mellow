@@ -2,7 +2,8 @@ use std::fmt::{Display, Formatter, Result};
 
 #[derive(Debug)]
 pub enum GatewayError {
-    InvalidOpCode
+    InvalidOpCode,
+    HeartFailure
 }
 
 impl Display for GatewayError {
@@ -10,7 +11,8 @@ impl Display for GatewayError {
         use GatewayError::*;
 
         match self {
-            InvalidOpCode => Display::fmt("Invalid OP code", f)
+            InvalidOpCode => Display::fmt("Invalid OP code", f),
+            HeartFailure => Display::fmt("Failed to start heart", f)
         }
     }
 }
