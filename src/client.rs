@@ -1,8 +1,8 @@
-use crate::gateway::DiscordWsClient;
+use crate::{gateway::DiscordWsClient, Result};
 
 pub struct Client<'a> {
     pub token: &'a str,
-    intents: &'a u16
+    pub intents: &'a u16
 }
 
 impl<'a> Client<'a> {
@@ -17,7 +17,7 @@ impl<'a> Client<'a> {
         Self::new(token, &0)
     }
 
-    pub async fn start(&self) -> crate::Result<()> {
-        DiscordWsClient { token: self.token, intents: self.intents }.open_connection().await
+    pub async fn start(self) -> Result<()> {
+        DiscordWsClient { client: self }.open_connection().await
     }
 }

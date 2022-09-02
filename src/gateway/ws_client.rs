@@ -4,7 +4,7 @@ use futures::{StreamExt, TryStreamExt, stream::{MapErr, SplitSink}};
 use tokio::{net::TcpStream, time};
 use tokio_tungstenite::{connect_async, WebSocketStream, MaybeTlsStream, tungstenite::Message};
 
-use crate::{json, Error, Result};
+use crate::{json, Error, Result, Client};
 
 use super::{Payload, GatewayOp, GatewayError};
 
@@ -14,8 +14,7 @@ type Sink<S> = SplitSink<MapErr<WebSocketStream<MaybeTlsStream<TcpStream>>, S>, 
 const DISCORD_GATEWAY_URL: &str = "wss://gateway.discord.gg/?v=10&encoding=json";
 
 pub struct DiscordWsClient<'a> {
-    pub token: &'a str,
-    pub intents: &'a u16
+    pub client: Client<'a>
 }
 
 impl<'a> DiscordWsClient<'a> {
@@ -55,12 +54,14 @@ impl<'a> DiscordWsClient<'a> {
                     tokio::spawn(async move {
                         loop {
                             interval.tick().await;
-                            send_heartbeat(sh_sink.as_ref()).await.unwrap();
+                            send_heartbeat(sh_sink.as_ref()).await;
                         }
                     });
+
+                    authorize_client(sink.clone().as_ref()).await?;
                 },
                 Dispatch => {
-                    // TODO: Packet handling....
+
                 }
                 _ => return Ok(())
             }
@@ -72,7 +73,11 @@ impl<'a> DiscordWsClient<'a> {
     }
 }
 
-async fn send_heartbeat<S>(sink: &Sink<S>) -> Result<()> {
-    // TODO: Implementation...
+async fn send_heartbeat<S>(sink: &Sink<S>) {
+    println!("Sending heartbeat.");
+}
+
+async fn authorize_client<S>(sink: &Sink<S>) -> Result<()> {
+    println!("Authorizing client.");
     Ok(())
 }
