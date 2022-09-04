@@ -1,6 +1,6 @@
-use std::{time::Duration, sync::Arc};
+use std::{time::Duration, sync::{Arc, Mutex}, ops::DerefMut};
 
-use futures::{StreamExt, TryStreamExt, stream::{MapErr, SplitSink}};
+use futures::{StreamExt, TryStreamExt, stream::{MapErr, SplitSink}, SinkExt};
 use tokio::{net::TcpStream, time};
 use tokio_tungstenite::{connect_async, WebSocketStream, MaybeTlsStream, tungstenite::Message};
 
@@ -25,8 +25,8 @@ impl<'a> DiscordWsClient<'a> {
         let ws_stream = t_stream.map_err(|e| Error::Tungstenite(e));
         let (sink, stream) = ws_stream.split();
 
-        let sink_sh = Arc::new(sink);
-
+        let sink_sh = Arc::new(Mutex::new(sink));
+        
         stream.try_for_each(|m| async {
             let data = m.into_data();
             let payload: Payload = json::from_str(&String::from_utf8(data).unwrap()).unwrap();
@@ -37,7 +37,7 @@ impl<'a> DiscordWsClient<'a> {
         Ok(())
     }
 
-    async fn handle_payload<S: 'static + Send>(&self, payload: Payload, sink: &Arc<Sink<S>>) -> Result<()> {
+    async fn handle_payload<S: 'static + Send>(&self, payload: Payload, sink: &Arc<Mutex<Sink<S>>>) -> Result<()> {
         println!("{payload:?}");
         let op = GatewayOp::from_code(payload.op);
 
@@ -49,16 +49,14 @@ impl<'a> DiscordWsClient<'a> {
                     let interval = payload.d["heartbeat_interval"].as_i64().unwrap() as u64;
                     let mut interval = time::interval(Duration::from_millis(interval));
                     
-                    let sh_sink = sink.clone();
-
+                    let sh_sink = Arc::clone(sink);
+                    
                     tokio::spawn(async move {
                         loop {
                             interval.tick().await;
-                            send_heartbeat(sh_sink.as_ref()).await;
+                            send_heartbeat(sh_sink).await;
                         }
                     });
-
-                    authorize_client(sink.clone().as_ref()).await?;
                 },
                 Dispatch => {
 
@@ -73,7 +71,7 @@ impl<'a> DiscordWsClient<'a> {
     }
 }
 
-async fn send_heartbeat<S>(sink: &Sink<S>) {
+async fn send_heartbeat<S>(sink: Arc<Mutex<Sink<S>>>) {
     println!("Sending heartbeat.");
 }
 
