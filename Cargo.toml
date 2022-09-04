@@ -9,7 +9,7 @@ futures = "0.3.23"
 serde_json = "1.0.85"
 
 [dependencies.tokio-tungstenite]
-version = "*"
+version = "0.17"
 features = ["native-tls"]
 
 [dependencies.tokio]

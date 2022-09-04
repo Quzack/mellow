@@ -1,15 +1,13 @@
-use std::{time::Duration, sync::{Arc, Mutex}, ops::DerefMut};
+use std::{time::Duration, sync::{Mutex, Arc}};
 
-use futures::{StreamExt, TryStreamExt, stream::{MapErr, SplitSink}, SinkExt};
-use tokio::{net::TcpStream, time};
-use tokio_tungstenite::{connect_async, WebSocketStream, MaybeTlsStream, tungstenite::Message};
+use futures::{StreamExt, TryStreamExt, Sink, SinkExt};
+use serde_json::json;
+use tokio::time;
+use tokio_tungstenite::{connect_async, tungstenite::Message};
 
 use crate::{json, Error, Result, Client};
 
 use super::{Payload, GatewayOp, GatewayError};
-
-// Hell no.
-type Sink<S> = SplitSink<MapErr<WebSocketStream<MaybeTlsStream<TcpStream>>, S>, Message>;
 
 const DISCORD_GATEWAY_URL: &str = "wss://gateway.discord.gg/?v=10&encoding=json";
 
@@ -37,7 +35,10 @@ impl<'a> DiscordWsClient<'a> {
         Ok(())
     }
 
-    async fn handle_payload<S: 'static + Send>(&self, payload: Payload, sink: &Arc<Mutex<Sink<S>>>) -> Result<()> {
+    async fn handle_payload<S>(&self, payload: Payload, sink: &Arc<Mutex<S>>) -> Result<()> 
+    where
+        S: Sink<Message> + Send + Unpin + 'static
+    {
         println!("{payload:?}");
         let op = GatewayOp::from_code(payload.op);
 
@@ -48,13 +49,13 @@ impl<'a> DiscordWsClient<'a> {
                 Hello => {
                     let interval = payload.d["heartbeat_interval"].as_i64().unwrap() as u64;
                     let mut interval = time::interval(Duration::from_millis(interval));
-                    
-                    let sh_sink = Arc::clone(sink);
-                    
+                               
                     tokio::spawn(async move {
+                        let sh_sink = Arc::clone(sink);
+
                         loop {
                             interval.tick().await;
-                            send_heartbeat(sh_sink).await;
+                            send_heartbeat(&sh_sink).await;
                         }
                     });
                 },
@@ -71,11 +72,11 @@ impl<'a> DiscordWsClient<'a> {
     }
 }
 
-async fn send_heartbeat<S>(sink: Arc<Mutex<Sink<S>>>) {
-    println!("Sending heartbeat.");
-}
+async fn send_heartbeat(sink: &Arc<Mutex<impl Sink<Message> + Unpin>>) {
+    let heartbeat = json!({
+        "op": GatewayOp::Heartbeat.code()
+    });
 
-async fn authorize_client<S>(sink: &Sink<S>) -> Result<()> {
-    println!("Authorizing client.");
-    Ok(())
+    sink.lock().unwrap().send(Message::Text(heartbeat.to_string())).await;
+    println!("Sending heartbeat.");
 }
