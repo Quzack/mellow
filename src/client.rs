@@ -1,4 +1,4 @@
-use crate::{gateway::DiscordWsClient, Result};
+use crate::{gateway::DiscordWsClient, Result, event::Event};
 
 pub struct Client<'a> {
     pub token: &'a str,
@@ -15,6 +15,10 @@ impl<'a> Client<'a> {
 
     pub fn from_token(token: &'a str) -> Self {
         Self::new(token, &0)
+    }
+
+    pub fn on_event<E: Event>(&self, f: fn(E)) {
+        // TODO: Implementation...
     }
 
     pub async fn start(self) -> Result<()> {

@@ -1,5 +1,5 @@
-use crate::event::Event;
+use crate::event::{impl_event, EventType};
 
 pub struct Ready;
 
-impl Event for Ready {}
+impl_event!(Ready, EventType::Ready);

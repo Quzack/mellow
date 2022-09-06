@@ -1,3 +1,3 @@
-mod packet_handler;
-
-pub(crate) use packet_handler::PacketHandler;
+pub trait PacketHandler {
+    fn handle(client: &crate::Client, data: serde_json::Value) -> crate::Result<()>;
+}

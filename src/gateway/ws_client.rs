@@ -32,6 +32,7 @@ impl<'a> DiscordWsClient<'a> {
         });
         
         stream.try_for_each(|m| async {
+            println!("{}", serde_json::to_string_pretty(&m.to_string()).unwrap());
             let payload: Payload = json::from_str(&m.to_string()).unwrap();
             drop(m);
 
@@ -42,7 +43,6 @@ impl<'a> DiscordWsClient<'a> {
     }
 
     async fn handle_payload(&self, payload: Payload, sender: mpsc::Sender<Message>) -> Result<()> {
-        println!("{payload:?}");
         let op = GatewayOp::from_code(payload.op);
 
         if let Some(op) = op {
@@ -53,15 +53,16 @@ impl<'a> DiscordWsClient<'a> {
                     let interval = payload.d.unwrap()["heartbeat_interval"].as_i64().unwrap() as u64;
                     let mut interval = time::interval(Duration::from_millis(interval));
 
-                    tokio::spawn(async move {
-                        let sender = sender.clone();
-                        //interval.tick().await;
+                    let c_sender = sender.clone();
 
+                    tokio::spawn(async move {
                         loop {
                             interval.tick().await;
-                            send_heartbeat(&sender).await;
+                            send_heartbeat(&c_sender).await;
                         }
                     });
+
+                    auth_client(&self.client, &sender.clone()).await;
                 },
                 Dispatch => {
 
@@ -83,4 +84,21 @@ async fn send_heartbeat(sender: &mpsc::Sender<Message>)  {
     });
 
     sender.send(Message::Text(heartbeat.to_string())).await.unwrap();
+}
+
+async fn auth_client<'a>(client: &Client<'a>, sender: &mpsc::Sender<Message>) {
+    let auth = json!({
+        "op": GatewayOp::Identify.code(),
+        "d": {
+            "token": client.token,
+            "intents": client.intents,
+            "properties": {
+                "os": "linux",
+                "browser": "mellow",
+                "device": "mellow"
+            }
+        }
+    });
+
+    sender.send(Message::Text(auth.to_string())).await.expect("Failed to authenticate client.");
 }
