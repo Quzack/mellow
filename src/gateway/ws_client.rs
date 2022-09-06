@@ -32,9 +32,8 @@ impl<'a> DiscordWsClient<'a> {
         });
         
         stream.try_for_each(|m| async {
-            let data = m.into_data();
-            println!("{data:?}");
-            let payload: Payload = json::from_str(&String::from_utf8(data).unwrap()).unwrap();
+            let payload: Payload = json::from_str(&m.to_string()).unwrap();
+            drop(m);
 
             self.handle_payload(payload, sender.clone()).await
         }).await?;
@@ -78,9 +77,9 @@ impl<'a> DiscordWsClient<'a> {
 }
 
 async fn send_heartbeat(sender: &mpsc::Sender<Message>)  {
-    println!("Sending heartbeat.");
     let heartbeat = json!({
-        "op": GatewayOp::Heartbeat.code()
+        "op": GatewayOp::Heartbeat.code(),
+        "d": "null"
     });
 
     sender.send(Message::Text(heartbeat.to_string())).await.unwrap();
