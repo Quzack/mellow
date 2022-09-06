@@ -1,8 +1,8 @@
-use std::{time::Duration, sync::{Mutex, Arc}};
+use std::{time::Duration};
 
-use futures::{StreamExt, TryStreamExt, Sink, SinkExt};
+use futures::{StreamExt, TryStreamExt, SinkExt};
 use serde_json::json;
-use tokio::time;
+use tokio::{time, sync::mpsc};
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 
 use crate::{json, Error, Result, Client};
@@ -21,24 +21,28 @@ impl<'a> DiscordWsClient<'a> {
         let (t_stream, _) = connect_async(url).await.unwrap();
 
         let ws_stream = t_stream.map_err(|e| Error::Tungstenite(e));
-        let (sink, stream) = ws_stream.split();
-
-        let sink_sh = Arc::new(Mutex::new(sink));
+        let (mut sink, stream) = ws_stream.split();
+        
+        let (sender, mut receiver) = mpsc::channel(1000);
+        
+        tokio::spawn(async move {
+            while let Some(msg) = receiver.recv().await {
+                sink.send(msg).await.expect("Failed to aggregate message to socket.");
+            }
+        });
         
         stream.try_for_each(|m| async {
             let data = m.into_data();
+            println!("{data:?}");
             let payload: Payload = json::from_str(&String::from_utf8(data).unwrap()).unwrap();
 
-            self.handle_payload(payload, &sink_sh).await
+            self.handle_payload(payload, sender.clone()).await
         }).await?;
         
         Ok(())
     }
 
-    async fn handle_payload<S>(&self, payload: Payload, sink: &Arc<Mutex<S>>) -> Result<()> 
-    where
-        S: Sink<Message> + Send + Unpin + 'static
-    {
+    async fn handle_payload(&self, payload: Payload, sender: mpsc::Sender<Message>) -> Result<()> {
         println!("{payload:?}");
         let op = GatewayOp::from_code(payload.op);
 
@@ -47,15 +51,16 @@ impl<'a> DiscordWsClient<'a> {
 
             match op {
                 Hello => {
-                    let interval = payload.d["heartbeat_interval"].as_i64().unwrap() as u64;
+                    let interval = payload.d.unwrap()["heartbeat_interval"].as_i64().unwrap() as u64;
                     let mut interval = time::interval(Duration::from_millis(interval));
-                               
+
                     tokio::spawn(async move {
-                        let sh_sink = Arc::clone(sink);
+                        let sender = sender.clone();
+                        //interval.tick().await;
 
                         loop {
                             interval.tick().await;
-                            send_heartbeat(&sh_sink).await;
+                            send_heartbeat(&sender).await;
                         }
                     });
                 },
@@ -72,11 +77,11 @@ impl<'a> DiscordWsClient<'a> {
     }
 }
 
-async fn send_heartbeat(sink: &Arc<Mutex<impl Sink<Message> + Unpin>>) {
+async fn send_heartbeat(sender: &mpsc::Sender<Message>)  {
+    println!("Sending heartbeat.");
     let heartbeat = json!({
         "op": GatewayOp::Heartbeat.code()
     });
 
-    sink.lock().unwrap().send(Message::Text(heartbeat.to_string())).await;
-    println!("Sending heartbeat.");
+    sender.send(Message::Text(heartbeat.to_string())).await.unwrap();
 }
