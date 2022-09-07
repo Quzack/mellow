@@ -7,9 +7,9 @@ use crate::gateway::GatewayError;
 
 #[derive(Debug)]
 pub enum Error {
-    Json(JsonError),
-    Gateway(GatewayError),
-    Tungstenite(TungsteniteError)
+    Json        (JsonError),
+    Gateway     (GatewayError),
+    Tungstenite (TungsteniteError)
 }
 
 impl From<JsonError> for Error {
@@ -29,8 +29,8 @@ impl Display for Error {
         use self::Error::*;
 
         match self {
-            Json(e) => Display::fmt(&e, f),
-            Gateway(e) => Display::fmt(&e, f),
+            Json(e)        => Display::fmt(&e, f),
+            Gateway(e)     => Display::fmt(&e, f),
             Tungstenite(e) => Display::fmt(&e, f)
         }
     }

@@ -32,7 +32,6 @@ impl<'a> DiscordWsClient<'a> {
         });
         
         stream.try_for_each(|m| async {
-            println!("{}", serde_json::to_string_pretty(&m.to_string()).unwrap());
             let payload: Payload = json::from_str(&m.to_string()).unwrap();
             drop(m);
 
@@ -43,6 +42,7 @@ impl<'a> DiscordWsClient<'a> {
     }
 
     async fn handle_payload(&self, payload: Payload, sender: mpsc::Sender<Message>) -> Result<()> {
+        println!("{payload:?}");
         let op = GatewayOp::from_code(payload.op);
 
         if let Some(op) = op {
@@ -50,8 +50,8 @@ impl<'a> DiscordWsClient<'a> {
 
             match op {
                 Hello => {
-                    let interval = payload.d.unwrap()["heartbeat_interval"].as_i64().unwrap() as u64;
-                    let mut interval = time::interval(Duration::from_millis(interval));
+                    let interval = payload.d.unwrap()["heartbeat_interval"].as_i64().unwrap();
+                    let mut interval = time::interval(Duration::from_millis(interval as u64));
 
                     let c_sender = sender.clone();
 
@@ -65,7 +65,7 @@ impl<'a> DiscordWsClient<'a> {
                     auth_client(&self.client, &sender.clone()).await;
                 },
                 Dispatch => {
-
+                    // TODO: Implementation...
                 }
                 _ => return Ok(())
             }

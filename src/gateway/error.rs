@@ -11,7 +11,7 @@ impl Display for GatewayError {
         use GatewayError::*;
 
         match self {
-            InvalidOpCode => Display::fmt("Invalid OP code", f),
+            InvalidOpCode   => Display::fmt("Invalid OP code", f),
             UnknownEvent(e) => Display::fmt(&format!("Unknown event: {e}"), f)
         }
     }
