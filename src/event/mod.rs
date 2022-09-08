@@ -1,11 +1,11 @@
-#[macro_use]
+use std::{any::Any, mem};
+
+pub(crate) mod packet;
 
 pub mod client;
 
-use std::{any::Any, mem};
-
 pub use self::{
-    client::*
+    client::Ready
 };
 
 pub trait Event: 'static {
@@ -19,9 +19,20 @@ pub enum EventType {
     Ready
 }
 
+impl EventType {
+    pub fn from_str(id: &str) -> Option<Self> {
+        use EventType::*;
+
+        match id {
+            "READY" => Some(Ready),
+            _       => None
+        }
+    }
+}
+
 pub struct Listener {
-    pub ty: EventType,
-    pub call: fn(&dyn Event, fn(*const ())),
+    pub ty:     EventType,
+    pub call:   fn(&dyn Event, fn(*const ())),
     pub i_call: fn(*const ())
 }
 
@@ -29,12 +40,8 @@ impl Listener {
     pub fn new<E: Event>(ty: EventType, callback: fn(&E)) -> Self {
         Self {
             ty,
-            call: unsafe {
-                mem::transmute(Self::handle::<E> as fn(_,_))
-            },
-            i_call: unsafe {
-                mem::transmute(callback)
-            }
+            call:   unsafe { mem::transmute(Self::handle::<E> as fn(_,_)) },
+            i_call: unsafe { mem::transmute(callback) }
         }
     }
 

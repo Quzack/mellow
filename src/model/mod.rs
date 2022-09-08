@@ -1,5 +1,5 @@
-mod gateway_intent;
+pub mod user;
 
 pub use self::{
-    gateway_intent::GatewayIntent
+    user::User
 };

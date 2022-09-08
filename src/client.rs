@@ -1,9 +1,10 @@
-use crate::{gateway::DiscordWsClient, Result, event::{Event, Listener}};
+use crate::{gateway::WsClient, Result, event::{Event, Listener}, model::User};
 
 pub struct Client<'a> {
-    pub token: &'a str,
+    pub token:   &'a str,
     pub intents: &'a u16,
-    listeners: Vec<Listener>
+    pub user:    Option<User>,
+    listeners:   Vec<Listener>
 }
 
 impl<'a> Client<'a> {
@@ -11,6 +12,7 @@ impl<'a> Client<'a> {
         Self {
             token,
             intents,
+            user:      None,
             listeners: vec![]
         }
     }
@@ -32,6 +34,6 @@ impl<'a> Client<'a> {
     }
 
     pub async fn start(self) -> Result<()> {
-        DiscordWsClient { client: self }.open_connection().await
+        WsClient::new(self).open_connection().await
     }
 }

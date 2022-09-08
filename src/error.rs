@@ -26,7 +26,7 @@ impl From<TungsteniteError> for Error {
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        use self::Error::*;
+        use Error::*;
 
         match self {
             Json(e)        => Display::fmt(&e, f),

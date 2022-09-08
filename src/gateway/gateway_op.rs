@@ -12,7 +12,7 @@ pub enum GatewayOp {
     HeartbeatRes
 }
 
-use self::GatewayOp::*;
+use GatewayOp::*;
 
 impl GatewayOp {
     pub fn code(&self) -> u8 {
