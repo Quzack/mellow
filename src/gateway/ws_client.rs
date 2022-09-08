@@ -2,21 +2,29 @@ use std::{time::Duration};
 
 use futures::{StreamExt, TryStreamExt, SinkExt};
 use serde_json::json;
-use tokio::{time, sync::mpsc};
+use tokio::{time, sync::mpsc::{self, Sender}};
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 
-use crate::{json, Error, Result, Client};
+use crate::{json, Error, Result, Client, event::{EventType, packet::PacketRegistry}};
 
 use super::{Payload, GatewayOp, GatewayError};
 
 const DISCORD_GATEWAY_URL: &str = "wss://gateway.discord.gg/?v=10&encoding=json";
 
 pub struct DiscordWsClient<'a> {
-    pub client: Client<'a>
+    client:     Client<'a>,
+    packet_reg: PacketRegistry
 }
 
 impl<'a> DiscordWsClient<'a> {
-    pub async fn open_connection(&self) -> Result<()> {
+    pub fn new(client: Client<'a>) -> DiscordWsClient<'a> {
+        Self {
+            client,
+            packet_reg: PacketRegistry::new() 
+        }
+    }
+
+    pub async fn open_connection(&mut self) -> Result<()> {
         let url = url::Url::parse(DISCORD_GATEWAY_URL).unwrap();
         let (t_stream, _) = connect_async(url).await.unwrap();
 
@@ -24,7 +32,7 @@ impl<'a> DiscordWsClient<'a> {
         let (mut sink, stream) = ws_stream.split();
         
         let (sender, mut receiver) = mpsc::channel(1000);
-        
+
         tokio::spawn(async move {
             while let Some(msg) = receiver.recv().await {
                 sink.send(msg).await.expect("Failed to aggregate message to socket.");
@@ -35,13 +43,13 @@ impl<'a> DiscordWsClient<'a> {
             let payload: Payload = json::from_str(&m.to_string()).unwrap();
             drop(m);
 
-            self.handle_payload(payload, sender.clone()).await
+            // self.handle_payload(payload, sender.clone()).await
         }).await?;
         
         Ok(())
     }
 
-    async fn handle_payload(&self, payload: Payload, sender: mpsc::Sender<Message>) -> Result<()> {
+    async fn handle_payload(&mut self, payload: Payload, sender: Sender<Message>) -> Result<()> {
         println!("{payload:?}");
         let op = GatewayOp::from_code(payload.op);
 
@@ -65,7 +73,15 @@ impl<'a> DiscordWsClient<'a> {
                     auth_client(&self.client, &sender.clone()).await;
                 },
                 Dispatch => {
-                    // TODO: Implementation...
+                    let e_name = payload.t.unwrap();
+
+                    let et = match EventType::from_str(&e_name) {
+                        Some(et) => et,
+                        None => return Err(Error::Gateway(GatewayError::UnknownEvent(e_name)))
+                    };
+
+                    let handler = self.packet_reg.handler_from_et(et).unwrap();
+                    handler.handle(&mut self.client, payload.d.unwrap())?;
                 }
                 _ => return Ok(())
             }
@@ -77,7 +93,7 @@ impl<'a> DiscordWsClient<'a> {
     }
 }
 
-async fn send_heartbeat(sender: &mpsc::Sender<Message>)  {
+async fn send_heartbeat(sender: &Sender<Message>)  {
     let heartbeat = json!({
         "op": GatewayOp::Heartbeat.code(),
         "d": "null"
@@ -86,7 +102,7 @@ async fn send_heartbeat(sender: &mpsc::Sender<Message>)  {
     sender.send(Message::Text(heartbeat.to_string())).await.unwrap();
 }
 
-async fn auth_client<'a>(client: &Client<'a>, sender: &mpsc::Sender<Message>) {
+async fn auth_client<'a>(client: &Client<'a>, sender: &Sender<Message>) {
     let auth = json!({
         "op": GatewayOp::Identify.code(),
         "d": {
