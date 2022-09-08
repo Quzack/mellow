@@ -26,11 +26,7 @@ impl<'a> Client<'a> {
     }
 
     pub fn emit_event<E: Event>(&self, inst: E) {
-        for listener in self.listeners.iter() {
-            if listener.ty == E::ty() {
-                (listener.call)(&inst, listener.i_call);
-            }
-        }
+        self.listeners.iter().filter(|l| l.ty == E::ty()).for_each(|l| (l.call)(&inst, l.i_call));
     }
 
     pub async fn start(self) -> Result<()> {

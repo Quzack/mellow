@@ -1,4 +1,4 @@
-use std::{time::Duration};
+use std::time::Duration;
 
 use futures::{StreamExt, TryStreamExt, SinkExt};
 use serde_json::json;
@@ -24,7 +24,7 @@ impl<'a> DiscordWsClient<'a> {
         }
     }
 
-    pub async fn open_connection(&mut self) -> Result<()> {
+    pub async fn open_connection(&self) -> Result<()> {
         let url = url::Url::parse(DISCORD_GATEWAY_URL).unwrap();
         let (t_stream, _) = connect_async(url).await.unwrap();
 
@@ -43,13 +43,13 @@ impl<'a> DiscordWsClient<'a> {
             let payload: Payload = json::from_str(&m.to_string()).unwrap();
             drop(m);
 
-            // self.handle_payload(payload, sender.clone()).await
+             self.handle_payload(payload, sender.clone()).await
         }).await?;
         
         Ok(())
     }
 
-    async fn handle_payload(&mut self, payload: Payload, sender: Sender<Message>) -> Result<()> {
+    async fn handle_payload(&self, payload: Payload, sender: Sender<Message>) -> Result<()> {
         println!("{payload:?}");
         let op = GatewayOp::from_code(payload.op);
 
@@ -81,7 +81,7 @@ impl<'a> DiscordWsClient<'a> {
                     };
 
                     let handler = self.packet_reg.handler_from_et(et).unwrap();
-                    handler.handle(&mut self.client, payload.d.unwrap())?;
+                    // handler.handle(&mut self.client, payload.d.unwrap())?;
                 }
                 _ => return Ok(())
             }

@@ -16,12 +16,7 @@ impl PacketRegistry {
     }
 
     pub fn handler_from_et(&self, et: EventType) -> Option<&Box<dyn PacketHandler>> {
-        for handler in self.packet_handlers.iter() {
-            if handler.ty() == et {
-                return Some(handler);
-            }
-        }
-        None
+        self.packet_handlers.iter().find(|h| h.ty() == et)
     }
 }
 

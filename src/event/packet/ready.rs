@@ -12,7 +12,7 @@ impl PacketHandler for ReadyHandler {
         Ok(())
     }
 
-    fn ty(&self) -> crate::event::EventType {
+    fn ty(&self) -> EventType {
        EventType::Ready 
     }
 }
