@@ -24,7 +24,7 @@ impl<'a> DiscordWsClient<'a> {
         }
     }
 
-    pub async fn open_connection(&mut self) -> Result<()> {
+    pub async fn open_connection(&self) -> Result<()> {
         let url = url::Url::parse(DISCORD_GATEWAY_URL).unwrap();
         let (t_stream, _) = connect_async(url).await.unwrap();
 
@@ -107,7 +107,6 @@ async fn send_heartbeat(sender: &Sender<Message>)  {
 }
 
 async fn auth_client<'a>(client: &Client<'a>, sender: &Sender<Message>) {
-
     let auth = json!({
         "op": GatewayOp::Identify.code(),
         "d": {

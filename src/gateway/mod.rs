@@ -57,8 +57,8 @@ impl GatewayOp {
 pub(crate) struct Payload {
     pub op: u8,
     pub d:  Option<Value>,
-    pub t:  Option<String>,
-    pub s:  Option<usize>
+    pub t:  Option<String>
+    // pub s:  Option<usize>
 }
 
 pub mod error;
