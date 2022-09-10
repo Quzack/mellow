@@ -25,7 +25,7 @@ impl<'a> Client<'a> {
         self.listeners.push(Listener::new::<E>(E::ty(), f));
     }
 
-    pub fn emit_event<E: Event>(&mut self, inst: E) {
+    pub fn emit_event<E: Event>(&self, inst: E) {
         self.listeners.iter().filter(|l| l.ty == E::ty()).for_each(|l| (l.call)(&inst, l.i_call, self));
     }
 
