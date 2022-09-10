@@ -1,3 +1,5 @@
+use serde_json::Value;
+
 use crate::{event::EventType, Result, Client};
 
 mod ready;
@@ -21,7 +23,7 @@ impl PacketRegistry {
 }
 
 pub trait PacketHandler {
-    fn handle(&self, client: &mut Client, data: serde_json::Value) -> Result<()>;
+    fn handle(&self, client: &mut Client, data: Value) -> Result<()>;
 
     fn ty(&self) -> EventType;
 }

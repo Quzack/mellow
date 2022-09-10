@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{time::Duration, sync::{Arc, Mutex}};
 
 use futures::{StreamExt, TryStreamExt, SinkExt};
 use serde_json::json;
@@ -12,26 +12,26 @@ use super::{Payload, GatewayOp, GatewayError};
 const DISCORD_GATEWAY_URL: &str = "wss://gateway.discord.gg/?v=10&encoding=json";
 
 pub struct DiscordWsClient<'a> {
-    client:     Client<'a>,
+    sh_client:  Arc<Mutex<Client<'a>>>,
     packet_reg: PacketRegistry
 }
 
 impl<'a> DiscordWsClient<'a> {
     pub fn new(client: Client<'a>) -> DiscordWsClient<'a> {
         Self {
-            client,
+            sh_client:  Arc::new(Mutex::new(client)),
             packet_reg: PacketRegistry::new() 
         }
     }
 
-    pub async fn open_connection(&self) -> Result<()> {
+    pub async fn open_connection(&mut self) -> Result<()> {
         let url = url::Url::parse(DISCORD_GATEWAY_URL).unwrap();
         let (t_stream, _) = connect_async(url).await.unwrap();
 
         let ws_stream = t_stream.map_err(|e| Error::Tungstenite(e));
         let (mut sink, stream) = ws_stream.split();
         
-        let (sender, mut receiver) = mpsc::channel(1000);
+        let (sender, mut receiver) = mpsc::channel(100);
 
         tokio::spawn(async move {
             while let Some(msg) = receiver.recv().await {
@@ -56,6 +56,10 @@ impl<'a> DiscordWsClient<'a> {
         if let Some(op) = op {
             use GatewayOp::*;
 
+            let c_clone = self.sh_client.clone();
+
+            let mut client = c_clone.lock().unwrap();
+
             match op {
                 Hello => {
                     let interval = payload.d.unwrap()["heartbeat_interval"].as_i64().unwrap();
@@ -70,7 +74,7 @@ impl<'a> DiscordWsClient<'a> {
                         }
                     });
 
-                    auth_client(&self.client, &sender.clone()).await;
+                    auth_client(&client, &sender.clone()).await;
                 },
                 Dispatch => {
                     let e_name = payload.t.unwrap();
@@ -81,7 +85,7 @@ impl<'a> DiscordWsClient<'a> {
                     };
 
                     let handler = self.packet_reg.handler_from_et(et).unwrap();
-                    // handler.handle(&mut self.client, payload.d.unwrap())?;
+                    handler.handle(&mut client, payload.d.unwrap())?;
                 }
                 _ => return Ok(())
             }
@@ -103,6 +107,7 @@ async fn send_heartbeat(sender: &Sender<Message>)  {
 }
 
 async fn auth_client<'a>(client: &Client<'a>, sender: &Sender<Message>) {
+
     let auth = json!({
         "op": GatewayOp::Identify.code(),
         "d": {

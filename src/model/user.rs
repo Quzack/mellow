@@ -2,12 +2,12 @@ use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 pub struct User {
-    pub id:            usize,
+    pub id:            String,
     #[serde(rename = "username")]
     pub name:          String,
-    pub discriminator: u16,
+    pub discriminator: String,
     #[serde(rename = "avatar")]
-    pub avatar_hash:   String,
+    pub avatar_hash:   Option<String>,
     pub bot:           Option<bool>,
     pub system:        Option<bool>,
     pub mfa_enabled:   Option<bool>,

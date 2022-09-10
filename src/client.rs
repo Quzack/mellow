@@ -21,12 +21,12 @@ impl<'a> Client<'a> {
         Self::new(token, &0)
     }
 
-    pub fn on_event<E: Event>(&mut self, f: fn(&E)) {
+    pub fn on_event<E: Event>(&mut self, f: fn(&E, &Client)) {
         self.listeners.push(Listener::new::<E>(E::ty(), f));
     }
 
-    pub fn emit_event<E: Event>(&self, inst: E) {
-        self.listeners.iter().filter(|l| l.ty == E::ty()).for_each(|l| (l.call)(&inst, l.i_call));
+    pub fn emit_event<E: Event>(&mut self, inst: E) {
+        self.listeners.iter().filter(|l| l.ty == E::ty()).for_each(|l| (l.call)(&inst, l.i_call, self));
     }
 
     pub async fn start(self) -> Result<()> {

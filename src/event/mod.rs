@@ -4,6 +4,8 @@ pub(crate) mod packet;
 
 pub mod client;
 
+use crate::Client;
+
 pub use self::{
     client::Ready
 };
@@ -32,22 +34,22 @@ impl EventType {
 
 pub struct Listener {
     pub ty:     EventType,
-    pub call:   fn(&dyn Event, fn(*const ())),
+    pub call:   fn(&dyn Event, fn(*const ()), &Client),
     pub i_call: fn(*const ())
 }
 
 impl Listener {
-    pub fn new<E: Event>(ty: EventType, callback: fn(&E)) -> Self {
+    pub fn new<E: Event>(ty: EventType, callback: fn(&E, &Client)) -> Self {
         Self {
             ty,
-            call:   unsafe { mem::transmute(Self::handle::<E> as fn(_,_)) },
+            call:   unsafe { mem::transmute(Self::handle::<E> as fn(_, _, _)) },
             i_call: unsafe { mem::transmute(callback) }
         }
     }
 
-    fn handle<E: Event>(event: &dyn Event, call: fn(&E)) {
+    fn handle<E: Event>(event: &dyn Event, call: fn(&E, &Client), c: &Client) {
         let event: &E = event.as_any().downcast_ref().unwrap();
-        call(event);
+        call(event, c);
     }
 }
 
