@@ -1,10 +1,11 @@
 use crate::{gateway::WsClient, Result, event::{Event, Listener}, model::User};
 
 pub struct Client<'a> {
-    pub token:   &'a str,
-    pub intents: &'a u16,
-    pub user:    Option<User>,
-    listeners:   Vec<Listener>
+    pub token:      &'a str,
+    pub intents:    &'a u16,
+    pub user:       Option<User>,
+    pub session_id: Option<String>,
+    listeners:      Vec<Listener>
 }
 
 impl<'a> Client<'a> {
@@ -12,8 +13,9 @@ impl<'a> Client<'a> {
         Self {
             token,
             intents,
-            user:      None,
-            listeners: vec![]
+            user:       None,
+            session_id: None,
+            listeners:  vec![]
         }
     }
 

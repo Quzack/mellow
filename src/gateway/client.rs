@@ -86,8 +86,9 @@ impl<'a> DiscordWsClient<'a> {
 
                     let handler = self.packet_reg.handler_from_et(et).unwrap();
                     handler.handle(&mut client, payload.d.unwrap())?;
-                }
-                _ => return Ok(())
+                },
+                InvalidSession => return Err(Error::Gateway(GatewayError::InvalidSession)),
+                _              => return Ok(())
             }
         } else {
             return Err(Error::Gateway(GatewayError::InvalidOpCode))

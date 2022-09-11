@@ -3,7 +3,8 @@ use std::fmt::{Display, Formatter, Result};
 #[derive(Debug)]
 pub enum GatewayError {
     InvalidOpCode,
-    UnknownEvent(String)
+    UnknownEvent(String),
+    InvalidSession
 }
 
 impl Display for GatewayError {
@@ -12,7 +13,8 @@ impl Display for GatewayError {
 
         match self {
             InvalidOpCode   => Display::fmt("Invalid OP code", f),
-            UnknownEvent(e) => Display::fmt(&format!("Unknown event: {e}"), f)
+            UnknownEvent(e) => Display::fmt(&format!("Unknown event: {e}"), f),
+            InvalidSession  => Display::fmt("Invalid session", f)
         }
     }
 }
