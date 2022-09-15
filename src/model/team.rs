@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use serde_repr::Deserialize_repr;
 
 use super::User;
 
@@ -15,10 +16,15 @@ pub struct Team {
 
 #[derive(Deserialize, Debug)]
 pub struct TeamMember {
-    pub user: User
+    pub membership_state: MembershipState,
+    pub permissions:      Vec<String>,
+    pub team_id:          String,
+    pub user:             User
 }
 
+#[derive(Deserialize_repr, Debug)]
+#[repr(u8)]
 pub enum MembershipState {
-    Invited,
-    Accepted
+    Invited  = 1,
+    Accepted = 2
 }
