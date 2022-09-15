@@ -50,7 +50,6 @@ impl<'a> DiscordWsClient<'a> {
     }
 
     async fn handle_payload(&self, payload: Payload, sender: Sender<Message>) -> Result<()> {
-        println!("{payload:?}");
         let op = GatewayOp::from_code(payload.op);
 
         if let Some(op) = op {
