@@ -2,7 +2,7 @@ use serde_json::Value;
 
 use crate::{event::EventType, Result, Client};
 
-mod ready;
+mod client;
 
 pub struct PacketRegistry {
     packet_handlers: Vec<Box<dyn PacketHandler>>
@@ -12,7 +12,7 @@ impl PacketRegistry {
     pub fn new() -> Self {
         Self {
             packet_handlers: vec![
-                Box::new(ready::ReadyHandler)
+                Box::new(client::ReadyHandler)
             ]
         }
     }
