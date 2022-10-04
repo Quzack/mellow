@@ -34,6 +34,6 @@ impl<'a> Client<'a> {
     }
 
     pub async fn start(self) -> Result<()> {
-        WsClient::new(self).open_connection().await
+        WsClient::new(self).connect().await
     }
 }

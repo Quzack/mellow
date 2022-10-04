@@ -1,7 +1,5 @@
 use std::{any::Any, mem};
 
-pub(crate) mod packet;
-
 pub mod client;
 
 use crate::Client;

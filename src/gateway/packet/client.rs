@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use crate::{event::{EventType, Ready}, Client, json, Result, model::guild::UnavailableGuild};
+use crate::{event::{EventType, Ready}, Client, json, Result};
 
 use super::PacketHandler;
 
@@ -12,8 +12,7 @@ impl PacketHandler for ReadyHandler {
         client.session_id  = json::from_val(&data["session_id"])?;
         client.application = json::from_val(&data["application"])?;
 
-        let guilds: Vec<UnavailableGuild> = json::from_val(&data["guilds"])?;
-        client.emit_event(Ready { guilds });
+        client.emit_event(Ready { guilds: json::from_val(&data["guilds"])? });
         
         Ok(())
     }

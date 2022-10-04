@@ -1,37 +1,39 @@
-use std::{time::Duration, sync::{Arc, Mutex}};
+use std::{sync::{Arc, Mutex}};
 
 use futures::{StreamExt, TryStreamExt, SinkExt};
 use serde_json::json;
-use tokio::{time, sync::mpsc::{self, Sender}};
-use tokio_tungstenite::{connect_async, tungstenite::Message};
+use tokio::{sync::mpsc::{self, Sender}};
+use tokio_tungstenite::tungstenite::Message;
 
-use crate::{json, Error, Result, Client, event::{EventType, packet::PacketRegistry}};
+use crate::{json, Error, Result, Client, event::EventType, gateway::{heart, packet, self}};
 
-use super::{Payload, GatewayOp, GatewayError};
+use super::{Payload, GatewayOp};
 
 const DISCORD_GATEWAY_URL: &str = "wss://gateway.discord.gg/?v=10&encoding=json";
 
 pub struct DiscordWsClient<'a> {
     sh_client:  Arc<Mutex<Client<'a>>>,
-    packet_reg: PacketRegistry
+    sender:     Option<Sender<Message>>
 }
 
 impl<'a> DiscordWsClient<'a> {
     pub fn new(client: Client<'a>) -> DiscordWsClient<'a> {
         Self {
             sh_client:  Arc::new(Mutex::new(client)),
-            packet_reg: PacketRegistry::new() 
+            sender:     None
         }
     }
 
-    pub async fn open_connection(&self) -> Result<()> {
+    pub async fn connect(&mut self) -> Result<()> {
         let url = url::Url::parse(DISCORD_GATEWAY_URL).unwrap();
-        let (t_stream, _) = connect_async(url).await.unwrap();
+        let (t_stream, _) = tokio_tungstenite::connect_async(url).await.unwrap();
 
         let ws_stream = t_stream.map_err(|e| Error::Tungstenite(e));
         let (mut sink, stream) = ws_stream.split();
         
         let (sender, mut receiver) = mpsc::channel(100);
+
+        self.sender = Some(sender);
 
         tokio::spawn(async move {
             while let Some(msg) = receiver.recv().await {
@@ -43,71 +45,47 @@ impl<'a> DiscordWsClient<'a> {
             let payload: Payload = json::from_str(&m.to_string()).unwrap();
             drop(m);
 
-             self.handle_payload(payload, sender.clone()).await
+             self.handle_payload(payload).await
         }).await?;
         
         Ok(())
     }
 
-    async fn handle_payload(&self, payload: Payload, sender: Sender<Message>) -> Result<()> {
-        let op = GatewayOp::from_code(payload.op);
+    async fn handle_payload(&self, payload: Payload) -> Result<()> {
+        let sender = self.sender.as_ref().unwrap();
 
-        if let Some(op) = op {
-            use GatewayOp::*;
+        let mtg_client = self.sh_client.clone();
+        let mut client = mtg_client.lock().unwrap();
 
-            let c_clone = self.sh_client.clone();
+        use GatewayOp::*;
 
-            let mut client = c_clone.lock().unwrap();
+        match payload.op {
+            Hello => {
+                let interval = payload.d.unwrap()["heartbeat_interval"].as_i64().unwrap();
+                
+                heart::start_heart(interval as u64, &sender).await;
+                auth_client(sender, &client).await;
+            },
+            Dispatch => {
+                let e_name = payload.t.unwrap();
 
-            match op {
-                Hello => {
-                    let interval = payload.d.unwrap()["heartbeat_interval"].as_i64().unwrap();
-                    let mut interval = time::interval(Duration::from_millis(interval as u64));
+                let et = match EventType::from_str(&e_name) {
+                    Some(ty) => ty,
+                    None     => return Err(Error::Gateway(gateway::Error::UnknownEvent(e_name)))
+                };
 
-                    let c_sender = sender.clone();
-
-                    tokio::spawn(async move {
-                        loop {
-                            interval.tick().await;
-                            send_heartbeat(&c_sender).await;
-                        }
-                    });
-
-                    auth_client(&client, &sender.clone()).await;
-                },
-                Dispatch => {
-                    let e_name = payload.t.unwrap();
-
-                    let et = match EventType::from_str(&e_name) {
-                        Some(et) => et,
-                        None => return Err(Error::Gateway(GatewayError::UnknownEvent(e_name)))
-                    };
-
-                    let handler = self.packet_reg.handler_from_et(et).unwrap();
-                    handler.handle(&mut client, payload.d.unwrap())?;
-                },
-                InvalidSession => return Err(Error::Gateway(GatewayError::InvalidSession)),
-                _              => return Ok(())
-            }
-        } else {
-            return Err(Error::Gateway(GatewayError::InvalidOpCode))
+                packet::handler_from_et(et).handle(&mut client, payload.d.unwrap())?;
+            },
+            InvalidSession => return Err(Error::Gateway(gateway::Error::InvalidSession)),
+            _              => return Ok(())
         }
 
         Ok(())
     }
 }
 
-async fn send_heartbeat(sender: &Sender<Message>)  {
-    let heartbeat = json!({
-        "op": GatewayOp::Heartbeat.code(),
-        "d": "null"
-    });
-
-    sender.send(Message::Text(heartbeat.to_string())).await.unwrap();
-}
-
-async fn auth_client<'a>(client: &Client<'a>, sender: &Sender<Message>) {
-    let auth = json!({
+async fn auth_client<'a>(sender: &Sender<Message>, client: &Client<'a>) {
+    let auth_json = json!({
         "op": GatewayOp::Identify.code(),
         "d": {
             "token": client.token,
@@ -118,7 +96,7 @@ async fn auth_client<'a>(client: &Client<'a>, sender: &Sender<Message>) {
                 "device": "mellow"
             }
         }
-    });
+    }).to_string();
 
-    sender.send(Message::Text(auth.to_string())).await.expect("Failed to authenticate client.");
+    sender.send(Message::Text(auth_json)).await.expect("Failed to authenticate client");
 }

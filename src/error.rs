@@ -3,7 +3,7 @@ use std::fmt::{Result, Display, Formatter};
 use serde_json::Error as JsonError;
 use tokio_tungstenite::tungstenite::Error as TungsteniteError;
 
-use crate::gateway::GatewayError;
+use crate::gateway::Error as GatewayError;
 
 #[derive(Debug)]
 pub enum Error {
