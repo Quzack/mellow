@@ -1,6 +1,6 @@
 # mellow
  
-Supports [version 10 of the Discord gateway](https://discord.com/developers/docs/reference#api-versioning-api-versions).
+*Supports [version 10 of the Discord gateway](https://discord.com/developers/docs/reference#api-versioning-api-versions).*
 
 This project was mostly to get better at Rust. I decided against documenting any of the code because it would require me to spend more time writing it than programming. This is not meant to be used for actual projects; instead, use [serenity](https://github.com/serenity-rs/serenity).
 
