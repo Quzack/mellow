@@ -1,31 +1,28 @@
 use std::{sync::{Arc, Mutex}};
 
 use futures::{StreamExt, TryStreamExt, SinkExt};
-use serde_json::json;
 use tokio::{sync::mpsc::{self, Sender}};
 use tokio_tungstenite::tungstenite::Message;
 
-use crate::{json, Error, Result, Client, event::EventType, gateway::{heart, packet, self}};
+use crate::{json, Error, event::EventType, gateway::{packet, self}};
 
 use super::{Payload, GatewayOp};
 
-const DISCORD_GATEWAY_URL: &str = "wss://gateway.discord.gg/?v=10&encoding=json";
-
-pub struct DiscordWsClient<'a> {
-    sh_client:  Arc<Mutex<Client<'a>>>,
+pub struct Client<'a> {
+    sh_client:  Arc<Mutex<crate::Client<'a>>>,
     sender:     Option<Sender<Message>>
 }
 
-impl<'a> DiscordWsClient<'a> {
-    pub fn new(client: Client<'a>) -> DiscordWsClient<'a> {
+impl<'a> Client<'a> {
+    pub fn new(client: crate::Client<'a>) -> Client<'a> {
         Self {
             sh_client:  Arc::new(Mutex::new(client)),
             sender:     None
         }
     }
 
-    pub async fn connect(&mut self) -> Result<()> {
-        let url = url::Url::parse(DISCORD_GATEWAY_URL).unwrap();
+    pub async fn connect(&mut self) -> crate::Result<()> {
+        let url = url::Url::parse(super::GATEWAY_URL).unwrap();
         let (t_stream, _) = tokio_tungstenite::connect_async(url).await.unwrap();
 
         let ws_stream = t_stream.map_err(|e| Error::Tungstenite(e));
@@ -51,9 +48,7 @@ impl<'a> DiscordWsClient<'a> {
         Ok(())
     }
 
-    async fn handle_payload(&self, payload: Payload) -> Result<()> {
-        let sender = self.sender.as_ref().unwrap();
-
+    async fn handle_payload(&self, payload: Payload) -> crate::Result<()> {
         let mtg_client = self.sh_client.clone();
         let mut client = mtg_client.lock().unwrap();
 
@@ -62,9 +57,9 @@ impl<'a> DiscordWsClient<'a> {
         match payload.op {
             Hello => {
                 let interval = payload.d.unwrap()["heartbeat_interval"].as_i64().unwrap();
-                
-                heart::start_heart(interval as u64, &sender).await;
-                auth_client(sender, &client).await;
+                self.start_heart(interval as u64).await;
+
+                self.send_identify(client.get_token(), client.get_intents()).await;
             },
             Dispatch => {
                 let e_name = payload.t.unwrap();
@@ -82,21 +77,44 @@ impl<'a> DiscordWsClient<'a> {
 
         Ok(())
     }
-}
-
-async fn auth_client<'a>(sender: &Sender<Message>, client: &Client<'a>) {
-    let auth_json = json!({
-        "op": GatewayOp::Identify.code(),
-        "d": {
-            "token": client.token,
-            "intents": client.intents,
-            "properties": {
-                "os": "linux",
-                "browser": "mellow",
-                "device": "mellow"
+    
+    async fn send_identify(
+        &self,
+        token:   &str,
+        intents: &u16
+    ) {
+        self.sender.as_ref().unwrap().clone().send(json::json_mt!(
+            {
+                "op": GatewayOp::Identify.code(),
+                "d": {
+                    "token": token,
+                    "intents": intents,
+                    "v": super::GATEWAY_VER,
+                    "properties": {
+                        "$os": "linux",
+                        "$browser": "mellow",
+                        "$device": "mellow"
+                    }
+                }
             }
-        }
-    }).to_string();
+        )).await.unwrap();
+    }
 
-    sender.send(Message::Text(auth_json)).await.expect("Failed to authenticate client");
+    async fn start_heart(&self, timer: u64) {
+        let mut interval = tokio::time::interval(std::time::Duration::from_millis(timer));
+        let sender = self.sender.as_ref().unwrap().clone();
+
+        tokio::spawn(async move {
+            loop {
+                interval.tick().await;
+                
+                sender.send(json::json_mt!(
+                    {
+                        "op": GatewayOp::Heartbeat.code(),
+                        "d": "null"
+                    }
+                )).await.unwrap();
+            }
+        });
+    }
 }

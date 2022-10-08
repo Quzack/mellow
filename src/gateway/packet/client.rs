@@ -7,10 +7,13 @@ use super::PacketHandler;
 pub struct ReadyHandler;
 
 impl PacketHandler for ReadyHandler {
-    fn handle(&self, client: &mut Client, data: Value) -> Result<()> {
-        client.user        = json::from_val(&data["user"])?;
-        client.session_id  = json::from_val(&data["session_id"])?;
-        client.application = json::from_val(&data["application"])?;
+    fn handle(
+        &self, 
+        client: &mut Client, 
+        data:   Value
+    ) -> Result<()> {
+        client.user = json::from_val(&data["user"])?;
+        client.app = json::from_val(&data["application"])?;
 
         client.emit_event(Ready { guilds: json::from_val(&data["guilds"])? });
         

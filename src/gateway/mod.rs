@@ -3,9 +3,11 @@ use serde_json::Value;
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
 mod client;
-mod heart;
 
 pub(crate) mod packet;
+
+pub(crate) const GATEWAY_URL: &str = "wss://gateway.discord.gg/?v=10&encoding=json";
+pub(crate) const GATEWAY_VER: u8 = 10;
 
 #[derive(Serialize_repr, Deserialize_repr, Debug)]
 #[repr(u8)]
@@ -39,6 +41,6 @@ pub(crate) struct Payload {
 pub mod error;
 
 pub use self::{
-    client::DiscordWsClient as WsClient,
-    error::GatewayError as Error
+    client::Client as WsClient,
+    error::Error
 };

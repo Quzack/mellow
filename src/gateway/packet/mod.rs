@@ -16,7 +16,11 @@ pub fn handler_from_et(e_ty: EventType) -> &'static Box<dyn PacketHandler> {
 }
 
 pub trait PacketHandler: Sync + Send {
-    fn handle(&self, client: &mut Client, data: Value) -> Result<()>;
+    fn handle(
+        &self, 
+        client: &mut Client, 
+        data:   Value
+    ) -> Result<()>;
 
     fn ty(&self) -> EventType;
 }

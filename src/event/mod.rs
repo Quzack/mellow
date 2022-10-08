@@ -45,7 +45,11 @@ impl Listener {
         }
     }
 
-    fn handle<E: Event>(event: &dyn Event, call: fn(&E, &Client), c: &Client) {
+    fn handle<E: Event>(
+        event: &dyn Event, 
+        call:  fn(&E, &Client), 
+        c:     &Client
+    ) {
         let event: &E = event.as_any().downcast_ref().unwrap();
         call(event, c);
     }

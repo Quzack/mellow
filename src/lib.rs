@@ -8,6 +8,7 @@ pub(crate) mod json;
 pub mod error;
 pub mod model;
 pub mod event;
+pub mod http;
 
 pub use crate::{
     client::Client,

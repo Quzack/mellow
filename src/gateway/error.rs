@@ -1,15 +1,15 @@
 use std::fmt::{Display, Formatter, Result};
 
 #[derive(Debug)]
-pub enum GatewayError {
+pub enum Error {
     InvalidOpCode,
     UnknownEvent(String),
     InvalidSession
 }
 
-impl Display for GatewayError {
+impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        use GatewayError::*;
+        use Error::*;
 
         match self {
             InvalidOpCode   => Display::fmt("Invalid OP code", f),

@@ -9,7 +9,8 @@ use crate::gateway::Error as GatewayError;
 pub enum Error {
     Json        (JsonError),
     Gateway     (GatewayError),
-    Tungstenite (TungsteniteError)
+    Tungstenite (TungsteniteError),
+
 }
 
 impl From<JsonError> for Error {
